@@ -14,6 +14,10 @@
 </p>
 
 <p align="center">
+  <a href="https://smart-notification-system-et9g.onrender.com"><img src="https://img.shields.io/badge/🌍_Live_Demo-Click_Here-ff6a00?style=for-the-badge" /></a>
+</p>
+
+<p align="center">
   <a href="#-features">Features</a> •
   <a href="#-system-architecture">Architecture</a> •
   <a href="#-tech-stack--why">Tech Stack</a> •
