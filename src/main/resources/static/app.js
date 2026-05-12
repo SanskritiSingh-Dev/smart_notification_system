@@ -5,8 +5,10 @@ let allRules = [];
 let stompClient = null;
 let myChart = null;
 
-// Base API URL
-const API_URL = 'http://localhost:8081';
+// Base API URL — auto-detects local vs deployed
+const API_URL = window.location.hostname === 'localhost'
+    ? 'http://localhost:8081'
+    : window.location.origin;
 
 // Elements
 const authContainer = document.getElementById('auth-container');
