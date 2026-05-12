@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Smart Notification System — A real-time notification middleware with rule-based event processing and multi-channel Discord delivery.">
+    <meta name="author" content="EchoBrain">
+    <meta name="theme-color" content="#ff6a00">
+    <title>Smart Notification System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container"></div>
+
+    <!-- Auth Container -->
+    <div class="container" id="auth-container">
+        <div class="glass-card">
+            <h1 class="title">Smart Alerts</h1>
+            <p class="subtitle">Real-time notification engine</p>
+            
+            <div class="tabs">
+                <button class="tab active" onclick="switchAuthTab('login')">Login</button>
+                <button class="tab" onclick="switchAuthTab('register')">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+                <input type="email" id="login-email" placeholder="Email" required>
+                <input type="password" id="login-password" placeholder="Password" required>
+                <button type="submit" class="btn primary-btn">Enter System</button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" class="auth-form hidden" onsubmit="handleRegister(event)">
+                <input type="text" id="register-name" placeholder="Full Name" required>
+                <input type="email" id="register-email" placeholder="Email" required>
+                <input type="password" id="register-password" placeholder="Password" required>
+                <select id="register-role" required>
+                    <option value="ROLE_USER">User (Receive Alerts)</option>
+                    <option value="ROLE_ADMIN">Admin (Manage Rules)</option>
+                </select>
+                <button type="submit" class="btn primary-btn">Create Identity</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard Container -->
+    <div class="container hidden" id="dashboard-container">
+        <div class="glass-card dashboard-card">
+            <header class="dashboard-header">
+                <div>
+                    <h2 id="welcome-message">Welcome, User</h2>
+                    <p class="role-badge" id="role-badge">USER</p>
+                </div>
+                <button class="btn logout-btn" onclick="logout()">Logout</button>
+            </header>
+
+            <div class="dashboard-content">
+                <!-- Profile Settings -->
+                <section class="profile-section">
+                    <h3>Channel Settings</h3>
+                    <div class="admin-box" style="margin-bottom: 20px; max-width: 100%;">
+                        <div style="display: flex; gap: 15px; align-items: center;">
+                            <input type="text" id="user-webhook" placeholder="Your Personal Discord Webhook URL" style="flex: 1;">
+                            <button class="btn primary-btn small-btn" onclick="handleUpdateWebhook()" style="margin:0">Save Channel</button>
+                        </div>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">
+                            💡 Paste your Discord Webhook URL here to receive alerts in your own private channel.
+                        </p>
+                    </div>
+                </section>
+
+                <!-- Notifications Section (Visible to everyone) -->
+                <section class="notifications-section">
+                    <h3>Your Notifications</h3>
+                    <div class="controls">
+                        <button class="btn icon-btn" onclick="fetchNotifications()">🔄 Refresh</button>
+                        <button class="btn icon-btn" onclick="handleMarkAllRead()" style="color:#ef4444">🧹 Clear All</button>
+                    </div>
+                    <div class="notification-list" id="notification-list">
+                        <!-- Populated by JS -->
+                        <div class="empty-state">No notifications yet.</div>
+                    </div>
+                </section>
+
+                <!-- Admin Section (Only visible to admins) -->
+                <section class="admin-section hidden" id="admin-section">
+                    <h3>System Analytics & Controls</h3>
+                    
+                    <!-- Analytics Chart -->
+                    <div class="admin-box" style="margin-bottom: 30px; max-width: 100%; height: 300px; display: flex; justify-content: center;">
+                        <canvas id="analyticsChart"></canvas>
+                    </div>
+                    
+                    <div class="admin-grid">
+                        <!-- Create Rule -->
+                        <div class="admin-box">
+                            <h4>Create New Rule</h4>
+                            <form id="rule-form" onsubmit="handleCreateRule(event)">
+                                <input type="text" id="rule-name" placeholder="Rule Name (e.g. Low Balance)" required>
+                                <input type="text" id="rule-type" placeholder="Condition Type (e.g. BALANCE_CHECK)" required>
+                                <input type="text" id="rule-value" placeholder="Condition (e.g. #balance < 100)" required>
+                                <input type="text" id="rule-template" placeholder="Message (e.g. Alert! {{balance}} is low)" required>
+                                <input type="text" id="rule-target" placeholder="Target Name (e.g. Shopping Channel)">
+                                <input type="text" id="rule-webhook" placeholder="Rule Webhook URL (Optional)">
+                                <button type="submit" class="btn primary-btn small-btn">Save Rule</button>
+                            </form>
+                        </div>
+                        <div class="admin-box">
+                            <h4>Manage Rules</h4>
+                            <div id="rule-list" class="mini-list">
+                                <!-- Rules will be listed here with delete buttons -->
+                            </div>
+                        </div>
+
+                        <!-- Trigger Event -->
+                        <div class="admin-box">
+                            <h4>Simulate Event</h4>
+                            <form onsubmit="handleTriggerEvent(event)">
+                                <select id="event-rule-select" onchange="onRuleSelect()" required>
+                                    <option value="" disabled selected>Select a Rule to simulate...</option>
+                                </select>
+                                <div id="target-display" style="font-size: 0.8rem; color: var(--accent-color); margin-bottom: 10px; font-weight: 600;"></div>
+                                <input type="text" id="event-type" placeholder="Event Type (e.g. PURCHASE)" required readonly>
+                                <input type="text" id="event-ref" placeholder="Reference User ID (e.g. 2)" required>
+                                <textarea id="event-data-json" placeholder='Event Data (JSON) - e.g. {"item": "Laptop", "price": "999"}' rows="3" class="form-control" style="width: 100%; margin-bottom: 10px; padding: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; color: white;"></textarea>
+                                <button type="submit" class="btn warning-btn small-btn">Trigger Event</button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Premium Modal -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div class="glass-card modal-card">
+            <h3 id="modal-title">Are you sure?</h3>
+            <p id="modal-message">This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button id="modal-cancel" class="btn secondary-btn">Cancel</button>
+                <button id="modal-confirm" class="btn warning-btn">Yes, Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WebSocket Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
