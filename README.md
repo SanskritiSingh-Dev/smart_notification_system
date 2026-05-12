@@ -166,7 +166,7 @@ Rule Webhook (highest) → User Webhook → Global Default (fallback)
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/YOUR_USERNAME/smart_notification_system.git
+git clone https://github.com/SanskritiSingh-Dev/smart_notification_system.git
 cd smart_notification_system
 ```
 
