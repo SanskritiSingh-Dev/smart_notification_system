@@ -82,6 +82,11 @@
                         <button class="btn icon-btn" onclick="fetchNotifications()">🔄 Refresh</button>
                         <button class="btn icon-btn" onclick="handleMarkAllRead()" style="color:#ef4444">🧹 Clear All</button>
                     </div>
+                    <div class="filter-tabs">
+                        <button class="filter-tab active" onclick="setNotifFilter('all')" id="filter-all">All</button>
+                        <button class="filter-tab" onclick="setNotifFilter('unread')" id="filter-unread">Unread</button>
+                        <button class="filter-tab" onclick="setNotifFilter('read')" id="filter-read">Read</button>
+                    </div>
                     <div class="notification-list" id="notification-list">
                         <!-- Populated by JS -->
                         <div class="empty-state">No notifications yet.</div>

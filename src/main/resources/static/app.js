@@ -4,6 +4,8 @@ let currentCredentials = null;
 let allRules = [];
 let stompClient = null;
 let myChart = null;
+let fetchedNotificationsList = [];
+let notifFilter = 'all';
 
 // Base API URL — auto-detects local vs deployed
 const API_URL = window.location.hostname === 'localhost'
@@ -123,6 +125,8 @@ function logout() {
     // Clear Session
     currentUser = null;
     currentCredentials = null;
+    fetchedNotificationsList = [];
+    notifFilter = 'all';
     
     // Stop Live Feed
     if (stompClient) {
@@ -275,7 +279,10 @@ async function fetchNotifications(silent = false) {
         const res = await fetch(endpoint, { headers: getAuthHeaders() });
         const data = await res.json();
 
-        renderNotifications(data);
+        // Update local cache
+        fetchedNotificationsList = data || [];
+
+        renderNotifications(fetchedNotificationsList);
     } catch (err) {
         if (!silent) {
             notificationList.innerHTML = '<div class="empty-state">Failed to load notifications.</div>';
@@ -288,44 +295,101 @@ function formatMessage(msg) {
     return msg.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
 }
 
+function formatTime(dateTimeStr) {
+    if (!dateTimeStr) return '';
+    const date = new Date(dateTimeStr);
+    
+    let hours = date.getHours();
+    let minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    minutes = minutes < 10 ? '0' + minutes : minutes;
+    
+    const timeStr = `${hours}:${minutes} ${ampm}`;
+    
+    // Check if it is today
+    const today = new Date();
+    if (date.toDateString() === today.toDateString()) {
+        return timeStr;
+    } else {
+        const options = { month: 'short', day: 'numeric' };
+        return `${timeStr}, ${date.toLocaleDateString(undefined, options)}`;
+    }
+}
+
+function setNotifFilter(filter) {
+    notifFilter = filter;
+    document.querySelectorAll('.filter-tab').forEach(btn => btn.classList.remove('active'));
+    
+    const activeBtn = document.getElementById(`filter-${filter}`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
+    
+    renderNotifications(fetchedNotificationsList);
+}
+
 function renderNotifications(notifications) {
     if (!notifications || notifications.length === 0) {
         notificationList.innerHTML = '<div class="empty-state">No notifications right now.</div>';
         return;
     }
 
-    // Filter to only show UNREAD notifications to keep the UI clean
-    const unreadNotifications = notifications.filter(n => n.status === 'UNREAD');
+    // Filter based on active filter state
+    let filtered = notifications;
+    if (notifFilter === 'unread') {
+        filtered = notifications.filter(n => n.status === 'UNREAD');
+    } else if (notifFilter === 'read') {
+        filtered = notifications.filter(n => n.status === 'READ');
+    }
+
+    if (filtered.length === 0) {
+        notificationList.innerHTML = `<div class="empty-state">No ${notifFilter} notifications right now.</div>`;
+        return;
+    }
 
     // Sort newest first
-    unreadNotifications.sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime));
+    filtered.sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime));
     
-    // Only show the 10 most recent unread notifications
-    const recentNotifications = unreadNotifications.slice(0, 10);
+    // Only show the 15 most recent notifications
+    const recentNotifications = filtered.slice(0, 15);
 
     // Build the new HTML string first to avoid DOM flashing
     let newHTML = '';
     
     recentNotifications.forEach(notif => {
         const isUnread = notif.status === 'UNREAD';
-        const date = new Date(notif.createdTime).toLocaleString();
         const targetUser = currentUser.role === 'ROLE_ADMIN' && notif.user ? ` (User #${notif.user.id})` : '';
+
+        // Calculate formatted times
+        const createdTimeStr = formatTime(notif.createdTime);
+        const readTimeStr = notif.readTime ? formatTime(notif.readTime) : '';
+
+        let timeString = '';
+        if (isUnread) {
+            timeString = `Delivered at ${createdTimeStr}`;
+        } else {
+            timeString = `Read at ${readTimeStr} (Delivered at ${createdTimeStr})`;
+        }
 
         let buttonHtml = '';
         if (currentUser.role === 'ROLE_USER') {
             buttonHtml = isUnread 
                 ? `<button class="btn secondary-btn small-btn" onclick="markAsRead(${notif.id})">Mark Read</button>` 
-                : '<span style="color:var(--text-muted);font-size:0.8rem">✓ Read</span>';
-        } else {
-            // Admins just see the status, they shouldn't mark users' notifications as read
-            buttonHtml = `<span style="color:var(--text-muted);font-size:0.8rem">${isUnread ? 'Unread' : '✓ Read'}</span>`;
+                : '';
         }
+
+        const ticksClass = isUnread ? 'unread-ticks' : 'read-ticks';
 
         newHTML += `
             <div class="notification-item ${isUnread ? 'unread' : ''}">
                 <div class="notification-content">
                     <p>${formatMessage(notif.message)}${targetUser}</p>
-                    <span>${date}</span>
+                    <span class="notification-meta">
+                        <span class="ticks-container ${ticksClass}">✓✓</span>
+                        <span class="time-text">${timeString}</span>
+                    </span>
                 </div>
                 ${buttonHtml}
             </div>
@@ -548,3 +612,10 @@ async function handleTriggerEvent(e) {
         showToast('Network error.', 'error');
     }
 }
+
+// Periodic UI Refresh for relative times (every 10 seconds)
+setInterval(() => {
+    if (currentUser && fetchedNotificationsList.length > 0) {
+        renderNotifications(fetchedNotificationsList);
+    }
+}, 10000);

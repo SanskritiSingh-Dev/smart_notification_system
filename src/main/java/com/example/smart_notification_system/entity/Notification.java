@@ -30,6 +30,9 @@ public class Notification {
     @Column(name = "created_time")
     private LocalDateTime createdTime;
 
+    @Column(name = "read_time")
+    private LocalDateTime readTime;
+
     @PrePersist
     public void prePersist() {
         this.createdTime = LocalDateTime.now();
@@ -86,5 +89,13 @@ public class Notification {
 
     public void setCreatedTime(LocalDateTime createdTime) {
         this.createdTime = createdTime;
+    }
+
+    public LocalDateTime getReadTime() {
+        return readTime;
+    }
+
+    public void setReadTime(LocalDateTime readTime) {
+        this.readTime = readTime;
     }
 }

@@ -68,6 +68,7 @@ public class NotificationService {
     public Optional<Notification> markAsRead(Long id) {
         return notificationRepository.findById(id).map(notification -> {
             notification.setStatus("READ");
+            notification.setReadTime(java.time.LocalDateTime.now());
             return notificationRepository.save(notification);
         });
     }
@@ -75,7 +76,12 @@ public class NotificationService {
     /** Marks all notifications as READ (bulk operation). */
     public void markAllAsRead() {
         List<Notification> all = notificationRepository.findAll();
-        all.forEach(n -> n.setStatus("READ"));
+        all.forEach(n -> {
+            if ("UNREAD".equals(n.getStatus())) {
+                n.setStatus("READ");
+                n.setReadTime(java.time.LocalDateTime.now());
+            }
+        });
         notificationRepository.saveAll(all);
     }
 }
